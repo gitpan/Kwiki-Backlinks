@@ -1,0 +1,12 @@
+name: Kwiki-Backlinks
+version: 0.06
+abstract: Keep and display a simple database of backlinks within a wiki
+author: Chris Dent <cdent@burningchrome.com>
+license: perl
+distribution_type: module
+requires:
+  Kwiki: 0.37
+no_index:
+  directory:
+    - inc
+generated_by: Module::Install version 0.36

@@ -4,38 +4,74 @@ use Kwiki::Installer '-base';
 
 const class_id             => 'backlinks';
 const class_title          => 'Backlinks';
-const css_file             => 'backlinks.css';
+# add_file happens too late when widget activates, so style goes in
+# template....
+#const css_file             => 'backlinks.css';
 const separator            => '____';
+
+const links_to_hook        => [qw(titlewiki wiki forced)];
 
 field hooked => 0;
 
 # This filesystem based style of data storage is based
 # on one of the early implementation of Backlinks for MoinMoin
 
-our $VERSION = '0.03';
+our $VERSION = '0.06';
+
+# init is called on load class,
+# which the installer does, so skip if in cgi
+sub init {
+    super;
+    return unless $self->is_in_cgi;
+    io($self->storage_directory)->mkdir;
+    $self->assert_database;
+}
+
+sub storage_directory {
+    $self->plugin_directory;
+}
+
+sub assert_database {
+    return unless io->dir($self->storage_directory)->empty;
+    for my $page ($self->hub->pages->all) {
+        $self->update($page);
+    }
+}
 
 sub register {
     my $registry = shift;
     $registry->add(widget => 'backlinks',
                    template => 'backlinks.html',
                    show_for => 'display',
+                   show_if_preference => 'show_backlinks',
                   );
     $registry->add(hook => 'page:store', post => 'update_hook');
+    $registry->add(preference => $self->show_backlinks);
+    $registry->add(prerequisite => 'user_preferences');
 }
 
-# init is called on load class,
-# which the installer does, so skip is in cgi
-sub init {
-    return unless $self->is_in_cgi;
-    super;
-    $self->assert_database;
+sub show_backlinks {
+    my $p = $self->new_preference('show_backlinks');
+    $p->query('Show How Many Backlinks?');
+    $p->type('pulldown');
+    my $choices = [
+        0  => 0,
+        5  => 5,
+        10 => 10,
+        25 => 25,
+        50 => 50,
+        100 => 100
+    ];
+    $p->choices($choices);
+    $p->default(5);
+    return $p;
 }
 
-sub assert_database {
-    return unless io->dir($self->plugin_directory)->empty;
-    for my $page ($self->hub->pages->all) {
-        $self->update($page);
-    }
+sub delete_hook {
+    my $page = $self->get_page;
+    $self = $self->hub->backlinks;
+    $self->clean_destination_links($page); # redundant but tidy
+    $self->clean_source_links($page);
 }
 
 sub update_hook {
@@ -53,47 +89,58 @@ sub update {
     my $units;
     my $formatter = $self->hub->formatter;
     unless ($self->hooked) {
-        my $table = $formatter->table;
-        for my $class (@$table{qw(titlewiki wiki forced)}) {
-            $self->hooked($self->hub->add_hook(
-                $class . '::matched', post => 'backlinks:add_match'
-            ));
-        }
         $self->hooked(1);
+        my $table = $formatter->table;
+        for my $class (@$table{@{$self->links_to_hook}}) {
+            $self->hub->add_hook(
+                $class . '::unit_match', post => 'backlinks:add_match'
+            );
+        }
     }
     $self->hub->pages->current($page);
+    $self->clean_source_links($page);
     $self->hub->formatter->text_to_parsed($page->content);
 }
 
-# XXX note that debugging work here showed that 
-# matched is being called in the parser multiple
-# times. Is this normal? 
 sub add_match {
     my $hook = pop;
-    my $match = shift or return;
+    my $unit = $self;
     $self = $self->hub->backlinks;
+    my $match = $unit->matched;
     $match =~ /(\w+)]?$/;
     $self->write_link($self->uri_escape($1));
 }
 
-sub clean_current_link {
-    my ($source, $dest) = @_;
-    my $chunk = $source . $self->separator . $dest;
-    my $dir = $self->plugin_directory . '/';
+sub clean_source_links {
+    my $page = shift;
+    my $source = $page->id;
+    my $chunk = $source . $self->separator . '*';
+    $self->clean_links($chunk);
+}
+
+sub clean_destination_links {
+    my $page = shift;
+    my $destination = $page->id;
+    my $chunk = '*' . $self->separator . $destination;
+    $self->clean_links($chunk);
+}
+
+sub clean_links {
+    my $chunk = shift;
+    my $dir = $self->storage_directory . '/';
     my $path = $dir . $chunk;
-    unlink($path);
+    unlink glob $path;
 }
 
 sub write_link {
     my $destination_id = shift;
     my $source_id = $self->hub->pages->current->id;
-    $self->clean_current_link($source_id, $destination_id);
     $self->touch_index_file($source_id, $destination_id);
 }
 
 sub get_filename {
     my ($source, $dest) = @_;
-    my $dir = $self->plugin_directory;
+    my $dir = $self->storage_directory;
     "$dir/$source" . $self->separator . $dest;
 }
 
@@ -104,22 +151,27 @@ sub touch_index_file {
 }
 
 sub all_backlinks {
+    my $count = $self->preferences->show_backlinks->value;
+    return [] unless $count;
     my $pages = $self->hub->pages;
-    my @backlink_pages = map {$pages->new_page($_)}
+    my @backlink_pages = grep {$_->exists} map {$pages->new_page($_)}
         $self->get_backlinks_for_page;
-    [
+    $count = $count > scalar(@backlink_pages)
+      ? scalar(@backlink_pages)
+      : $count;
+    @backlink_pages = 
         map {
             +{ page_uri => $_->uri, page_title => $_->title } 
         } sort {
             $b->modified_time <=> $a->modified_time
-        } @backlink_pages
-    ]
+        } @backlink_pages;
+    [@backlink_pages[0 .. $count -1]];
 }
 
 sub get_backlinks_for_page {
-    my $page_id = $self->pages->current->id;
+    my $page_id = $self->hub->pages->current->id;
     my $chunk = $self->separator . $page_id;
-    my $dir = $self->plugin_directory . '/';
+    my $dir = $self->storage_directory . '/';
     my $path = $dir . "*$chunk";
     map { s/^$dir//; s/$chunk$//; $_} glob($path);
 }
@@ -163,31 +215,14 @@ it under the same terms as Perl itself.
 =cut
 __template/tt2/backlinks.html__
 <!-- BEGIN backlinks -->
-<style>
-div#backlinks {
-    font-family: Helvetica, Arial, sans-serif;
-    overflow: hidden;
-}
-#backlinks a { 
-    font-size: small;
-    display: block;
-    text-align: center;
-    text-decoration: none;
-    padding-bottom: .25em;
-}
-#backlinks h3 {
-    font-size: small;
-    text-align: center;
-    letter-spacing: .25em;
-    padding-bottom: .25em;
-}
-</style>
 [% backlinks = hub.backlinks.all_backlinks %]
 [% IF backlinks.size %]
-<div id="backlinks">
-<h3>BACKLINKS</h3>
+<div style="font-family: Helvetica, Arial, sans-serif; overflow: hidden;"
+     id="backlinks">
+<h3 style="font-size: small; text-align: center; letter-spacing: .25em; padding-bottom: .25em;">BACKLINKS</h3>
 [% FOREACH link = backlinks %]
-<a href="[% script_name %]?[% link.page_uri %]">[% link.page_title %]</a>
+<a style="font-size: small; display:block; text-align: center; text-decoration: none; padding-bottom: .25em;"
+   href="[% script_name %]?[% link.page_uri %]">[% link.page_title %]</a>
 [% END %]
 </div> 
 [% END %]
