@@ -6,6 +6,8 @@ const class_id             => 'backlinks';
 const class_title          => 'Backlinks';
 const SEPARATOR            => '____';
 const MAX_FILE_LENGTH      => 255;
+const preference_query     =>
+      'Show How Many Backlinks?';
 
 const links_to_hook        => [qw(titlewiki wiki forced)];
 
@@ -14,14 +16,14 @@ field hooked => 0;
 # This filesystem based style of data storage is based
 # on one of the early implementation of Backlinks for MoinMoin
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 # init is called on load class,
 # which the installer does, so skip if in cgi
 sub init {
     super;
-    io($self->storage_directory)->mkdir;
     return unless $self->is_in_cgi;
+    io($self->storage_directory)->mkdir;
     $self->assert_database;
 }
 
@@ -50,7 +52,7 @@ sub register {
 
 sub show_backlinks {
     my $p = $self->new_preference('show_backlinks');
-    $p->query('Show How Many Backlinks?');
+    $p->query($self->preference_query);
     $p->type('pulldown');
     my $choices = [
         0  => 0,
