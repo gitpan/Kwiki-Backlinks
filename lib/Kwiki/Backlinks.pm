@@ -12,7 +12,7 @@ field hooked => 0;
 # This filesystem based style of data storage is based
 # on one of the early implementation of Backlinks for MoinMoin
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 sub register {
     my $registry = shift;
@@ -105,11 +105,14 @@ sub touch_index_file {
 
 sub all_backlinks {
     my $pages = $self->hub->pages;
+    my @backlink_pages = map {$pages->new_page($_)}
+        $self->get_backlinks_for_page;
     [
         map {
-            my $page = $pages->new_page($_);
-            +{ page_uri => $page->uri, page_title => $page->title} 
-        } $self->get_backlinks_for_page
+            +{ page_uri => $_->uri, page_title => $_->title } 
+        } sort {
+            $b->modified_time <=> $a->modified_time
+        } @backlink_pages
     ]
 }
 

@@ -1,4 +1,9 @@
 ---
+version: 0.03
+date: Sun Jan 30 23:55:46 PST 2005
+changes:
+- Sort backlink pages by reversed modified time
+---
 version: 0.02
 date:    Fri Jan 21 11:53:31 EST 2005
 changes:
