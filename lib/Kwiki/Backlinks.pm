@@ -4,10 +4,8 @@ use Kwiki::Installer '-base';
 
 const class_id             => 'backlinks';
 const class_title          => 'Backlinks';
-# add_file happens too late when widget activates, so style goes in
-# template....
-#const css_file             => 'backlinks.css';
-const separator            => '____';
+const SEPARATOR            => '____';
+const MAX_FILE_LENGTH      => 255;
 
 const links_to_hook        => [qw(titlewiki wiki forced)];
 
@@ -16,14 +14,14 @@ field hooked => 0;
 # This filesystem based style of data storage is based
 # on one of the early implementation of Backlinks for MoinMoin
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 # init is called on load class,
 # which the installer does, so skip if in cgi
 sub init {
     super;
-    return unless $self->is_in_cgi;
     io($self->storage_directory)->mkdir;
+    return unless $self->is_in_cgi;
     $self->assert_database;
 }
 
@@ -114,14 +112,14 @@ sub add_match {
 sub clean_source_links {
     my $page = shift;
     my $source = $page->id;
-    my $chunk = $source . $self->separator . '*';
+    my $chunk = $source . $self->SEPARATOR . '*';
     $self->clean_links($chunk);
 }
 
 sub clean_destination_links {
     my $page = shift;
     my $destination = $page->id;
-    my $chunk = '*' . $self->separator . $destination;
+    my $chunk = '*' . $self->SEPARATOR . $destination;
     $self->clean_links($chunk);
 }
 
@@ -141,13 +139,19 @@ sub write_link {
 sub get_filename {
     my ($source, $dest) = @_;
     my $dir = $self->storage_directory;
-    "$dir/$source" . $self->separator . $dest;
+    "$dir/$source" . $self->SEPARATOR . $dest;
 }
 
 sub touch_index_file {
-    my $file = $self->get_filename(@_);
-    my $fileref = io($file);
-    $fileref->touch->assert;
+    my ($source, $dest) = @_;
+    # XXX hack to avoid overly long filenames. means for the time
+    # being that really long page names just don't get backlinks
+    if (length($source . $dest . $self->SEPARATOR) <=
+        $self->MAX_FILE_LENGTH) {
+        my $file = $self->get_filename($source, $dest);
+        my $fileref = io($file);
+        $fileref->touch->assert;
+    }
 }
 
 sub all_backlinks {
@@ -170,7 +174,7 @@ sub all_backlinks {
 
 sub get_backlinks_for_page {
     my $page_id = $self->hub->pages->current->id;
-    my $chunk = $self->separator . $page_id;
+    my $chunk = $self->SEPARATOR . $page_id;
     my $dir = $self->storage_directory . '/';
     my $path = $dir . "*$chunk";
     map { s/^$dir//; s/$chunk$//; $_} glob($path);

@@ -3,7 +3,6 @@ use warnings;
 use Test::More tests => 2;
 use Kwiki::Test;
 
-use lib $ENV{KWIKI_REPOSITORY_BASE};
 use lib '../lib';
 
 SKIP: {

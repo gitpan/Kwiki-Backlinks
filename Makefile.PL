@@ -6,7 +6,9 @@ author('Chris Dent <cdent@burningchrome.com>');
 version_from('lib/Kwiki/Backlinks.pm');
 license('perl');
 
-requires('Kwiki' => 0.37);
+requires('Kwiki' => 0.37,
+         'Kwiki::Test' => 0,
+         'Kwiki::UserPreferences' => 0);
 
 check_nmake();
 
