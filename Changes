@@ -1,4 +1,9 @@
 ---
+version: 0.02
+date:    Fri Jan 21 11:53:31 EST 2005
+changes:
+- Correct utf8 destination filenames.
+---
 version: 0.01
 date:   Fri Jan 21 00:55:08 PST 2005
 changes: - Initial release

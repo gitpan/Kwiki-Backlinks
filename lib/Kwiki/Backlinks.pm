@@ -12,7 +12,7 @@ field hooked => 0;
 # This filesystem based style of data storage is based
 # on one of the early implementation of Backlinks for MoinMoin
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 sub register {
     my $registry = shift;
@@ -73,7 +73,7 @@ sub add_match {
     my $match = shift or return;
     $self = $self->hub->backlinks;
     $match =~ /(\w+)]?$/;
-    $self->write_link($1);
+    $self->write_link($self->uri_escape($1));
 }
 
 sub clean_current_link {
