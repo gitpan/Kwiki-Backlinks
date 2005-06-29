@@ -16,7 +16,7 @@ field hooked => 0;
 # This filesystem based style of data storage is based
 # on one of the early implementation of Backlinks for MoinMoin
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 # init is called on load class,
 # which the installer does, so skip if in cgi
@@ -107,8 +107,9 @@ sub add_match {
     my $unit = $self;
     $self = $self->hub->backlinks;
     my $match = $unit->matched;
-    $match =~ /(\w+)]?$/;
-    $self->write_link($self->uri_escape($1));
+    return if $match =~ /^!/;
+    ($match) = ($match =~ /(\w+)]?$/);
+    $self->write_link($self->uri_escape($match));
 }
 
 sub clean_source_links {
@@ -161,7 +162,7 @@ sub all_backlinks {
     return [] unless $count;
     my $pages = $self->hub->pages;
     my @backlink_pages = grep {$_->exists} map {$pages->new_page($_)}
-        $self->get_backlinks_for_page;
+        $self->get_backlinks_for_page($self->hub->pages->current->id);
     $count = $count > scalar(@backlink_pages)
       ? scalar(@backlink_pages)
       : $count;
@@ -175,7 +176,7 @@ sub all_backlinks {
 }
 
 sub get_backlinks_for_page {
-    my $page_id = $self->hub->pages->current->id;
+    my $page_id = shift;
     my $chunk = $self->SEPARATOR . $page_id;
     my $dir = $self->storage_directory . '/';
     my $path = $dir . "*$chunk";

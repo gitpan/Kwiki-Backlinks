@@ -7,7 +7,8 @@ version_from('lib/Kwiki/Backlinks.pm');
 license('perl');
 
 requires('Kwiki' => 0.37,
-         'Kwiki::Test' => 0,
+         'Spoon' => 0.22,
+         'Kwiki::Test' => 0.03,
          'Kwiki::UserPreferences' => 0);
 
 check_nmake();

@@ -31,8 +31,7 @@ SKIP: {
 
     # look for the backlinks by method
     {
-        $pages->current($pages->new_from_name('HomePage'));
-        my @backlinks = $backlinks->get_backlinks_for_page;
+        my @backlinks = $backlinks->get_backlinks_for_page('HomePage');
 
         is($backlinks[0], 'BacklinkSampler',
             "HomePage has a BacklinkSampler backlink");
