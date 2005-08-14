@@ -1,4 +1,9 @@
 ---
+version: 0.10
+date: Sun Aug 14 13:54:41 PDT 2005
+changes:
+- Shows backines on the edit page too, via rjbs
+---
 version: 0.09
 date: Wed Jun 29 11:53:25 PDT 2005
 changes:

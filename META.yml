@@ -1,5 +1,5 @@
 name: Kwiki-Backlinks
-version: 0.09
+version: 0.10
 abstract: Keep and display a simple database of backlinks within a wiki
 author: Chris Dent <cdent@burningchrome.com>
 license: perl

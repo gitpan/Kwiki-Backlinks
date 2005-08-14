@@ -16,7 +16,7 @@ field hooked => 0;
 # This filesystem based style of data storage is based
 # on one of the early implementation of Backlinks for MoinMoin
 
-our $VERSION = '0.09';
+our $VERSION = '0.10';
 
 # init is called on load class,
 # which the installer does, so skip if in cgi
@@ -42,7 +42,7 @@ sub register {
     my $registry = shift;
     $registry->add(widget => 'backlinks',
                    template => 'backlinks.html',
-                   show_for => 'display',
+                   show_for => [ qw(display edit)],
                    show_if_preference => 'show_backlinks',
                   );
     $registry->add(hook => 'page:store', post => 'update_hook');
@@ -200,12 +200,26 @@ understanding by others.
 
 You can see Kwiki::Backlinks in action at L<http://www.burningchrome.com/wiki/>
 
-This code also happens to demonstrate a novel use of Spoon hooks
+This code also happens to demonstrate a novel use of Spoon hooks.
+
+The backlinks database may also be used as a generic database of linking
+activity in the wiki. L<Kwiki::Orphans> uses the database to reveal
+pages which have no incoming links. The backlinks for any given page 
+can be found the the following incantation:
+
+    @backlinks = $self->hub->backlinks->get_backlinks_for_page($page->id);
+
+This returns a list of page ids.
 
 =head1 AUTHORS
 
 Chris Dent, <cdent@burningchrome.com>
 Brian Ingerson, <ingy@ttul.org>
+
+=head1 CREDITS
+
+Thanks to Ricardo SIGNES for the idea and patch for showing backlinks
+on the edit page. Small price for very valuable gain.
 
 =head1 SEE ALSO
 
